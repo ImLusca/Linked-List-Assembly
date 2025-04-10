@@ -168,6 +168,7 @@ finalizar:
 apagar_lista s1
 	li a7, 10 						# Carrega o serviço de finalização de programa
 	ecall							# Chamada do sistema (encerra o programa)
+	
 # ========= FUNÇOES DA LISTA ==========
 # Funções para implementação e manejo da lista.
 # *Nota: Para garantir que nenhuma função se perca, por padrão toda a função empilha seu endereço na stack
