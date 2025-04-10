@@ -341,7 +341,7 @@ insert:
 # t0 - endereço de [CAUDA]                 -> Auxiliar
 # t1 - dado recuperado                     -> Output
 # t2 - endereço do anterior (nova [CAUDA]) -> Auxiliar
-# t3 - marcador de não vazio (-1 / -2)              -> Auxiliar
+# t3 - marcador de não vazio (-1 / -2)     -> Auxiliar
 # --------------------------------
 list_remove:
 	empilhar ra     # guarda o endereço da função na stack (ra)
