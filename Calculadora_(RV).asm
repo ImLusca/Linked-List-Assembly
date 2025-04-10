@@ -122,27 +122,53 @@ trata_op:
 	beq t0, a2, divide				# Se t0 == a2 -> função divide
 
 adiciona:
-	addi a0, s0, 0 					# Salva o valor tirado da lista em a0
+	empilhar ra # Guarda o endereço de retorno da pilha
 	add s0, a0, a1 					# Cálculo principal - s0 = a0 + a1
+	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 subtrai:
-	addi a0, s0, 0 					# Salva o valor tirado da lista em a0
+	empilhar ra # Guarda o endereço de retorno da pilha
 	sub s0, a0, a1 					# Cálculo principal
+	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 multiplica:
-	addi a0, s0, 0 					# Salva o valor tirado da lista em a0
+	empilhar ra # Guarda o endereço de retorno da pilha
 	mul s0, a0, a1 					# Cálculo principal
+	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 divide:
-	addi a0, s0, 0 					# Salva o valor tirado da lista em a0
+	empilhar ra # Guarda o endereço de retorno da pilha
 	div s0, a0, a1 					# Cálculo principal
+	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 
 undo:
+	empilhar ra					# Guarda o endereço de retorno na pilha
+	
+	# Remove o último resultado da lista
+	remover_lista s0, s1		# Remove o último resultado e o armazena em s0
+
+	li a7, 4					# Carrega o serviço de printar string
+	la a0, strUndo				# Carrega o endereço da mensagem de undo
+	ecall						# Chama o serviço para imprimir a mensagem
+
+	li a7, 1					# Carrega o serviço de printar inteiro
+	add a0, zero, s0			# Carrega o resultado em a0
+	ecall						# Chama o serviço para imprimir o resultado
+
+	li a7, 11					# Carrega o serviço de printar caractere
+	li a0, '\n'					# Carrega o caractere de nova linha
+	ecall						# Chama o serviço para imprimir a nova linha
+	
+	desempilhar ra				# Restaura o endereço de retorno da pilha
+	j loop_principal			# Volta ao loop principal
 
 finalizar:
+
+apagar_lista s1
 	li a7, 10 						# Carrega o serviço de finalização de programa
 	ecall							# Chamada do sistema (encerra o programa)
+	
 # ========= FUNÇOES DA LISTA ==========
 # Funções para implementação e manejo da lista.
 # *Nota: Para garantir que nenhuma função se perca, por padrão toda a função empilha seu endereço na stack
