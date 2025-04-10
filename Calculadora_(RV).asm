@@ -418,9 +418,10 @@ lerInput:
 	la a0, strInput  		# Carrega a string como argumento
 	ecall								# Chama o serviço
 
-	jal leOperacao			# Função para ler operação
-	
-	li t0, 177					# Armazena 'u' em t0 para comparar
+	j leOperacao				# Função para ler operação
+
+leProximoValor:
+	li t0, 117					# Armazena 'u' em t0 para comparar
 	li t1, 102					# Armazena 'f' em t0 para comparar
 	beq t0, a0, naoEhAritimetica
 	beq t1, a0, naoEhAritimetica # Se o char lido for u ou f, retorna sem ler o próximo número
@@ -443,34 +444,66 @@ leOperacao:
 	li t0, 32						# Compara o valor 32(caractere ' ') para comparar
 	beq a0, t0, leOperacao # Se ler espaço, lê novamnete
 
-	jalr
+	j leProximoValor
+
 naoEhAritimetica:
 	jalr zero, 0(ra)
 	
 #FUNÇÃO OUTPUT ---------------------
-# Recebe em a0 a operação e em a1 e a2 o primeiro e segundo valor e em a3 o resultado
+# Recebe em a0 a operação (char), a1 e a2 os operandos e a3 o resultado
 printaResultado:
-	li a7, 4						# Carrega o serviço de printar string
-	
-	li t0, 42 					# Carrega o Char '+' em t0 para comparacao
-	beq t0, a0, soma    # Se for soma, vai para rotina
-	
-	li t0, 43 					# Carrega o Char '*' em t0 para comparacao
-	beq t0, a0, mult    # Se for multiplicacao, vai para rotina
-	
-	li t0, 47 					# Carrega o Char '/' em t0 para comparacao
-	beq t0, a0, soma    # Se for divisão, vai para rotina
+	li t0, 43             # Carrega char '+' para comparar
+	beq a0, t0, opSoma
 
-	la a0, strOutSub		# Se não for nenhum dos anteriores, é uma subtração
+	li t0, 42             # Carrega char '*' para comparar
+	beq a0, t0, opMult
+
+	li t0, 47             # Carrega char '/' para comparar
+	beq a0, t0, opDiv
+
+	# Default: subtração
+	la a0, strOutSub			# Carrega astring strOutSub e vai para imprime_cabecalho
+	j imprime_cabecalho
+
+opSoma:
+	la a0, strOutSum			# Carrega a string strOutSum e vai para imprime_cabecalho
+	j imprime_cabecalho
+
+opMult:
+	la a0, strOutMul			# Carrega astring strOutMul e vai para imprime_cabecalho
+	j imprime_cabecalho		
+
+opDiv:
+	la a0, strOutDiv			# Carrega astring strOutDiv e vai para imprime_cabecalho
+
+imprime_cabecalho:
+	li a7, 4              # Printa string carregada
 	ecall
-	li a7, 1						# Carrega Serviço de printa inteiro
-	add a0, zero, a1		# 
 
-	la a0, strEquals		# Carrega a string " e "
+printValores:
+	li a7, 1
+	mv a0, a1             # Printa Primeiro valor
 	ecall
 
-soma:
-	la a0, strOutSum
+	li a7, 4
+	la a0, strAnd         # Printa " e "
 	ecall
 
+	li a7, 1
+	mv a0, a2             # Printa Segundo valor
+	ecall
+
+	li a7, 4
+	la a0, strEquals      # Printa " é igual a: "
+	ecall
+
+	li a7, 1
+	mv a0, a3             # Resultado
+	ecall
+
+	li a7, 11							
+	li a0, 10							# Printa \n
+	ecall
+
+	jalr zero, 0(ra)
 
