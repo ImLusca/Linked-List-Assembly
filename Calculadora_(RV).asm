@@ -228,8 +228,7 @@ list_remove_slot:
 remove:
 	li t2, -1  # carrega -1 em t2 (marcador vazio)
 	sw t2, (a2)    # coloca -1 em a2 ([END])
-	#li t0, -1   # coloca -1 em t0 (endereço anterior)
-	j fim_remove
+	j fim_remove   # pula para fim_remove
 	
 	
 # ----- FUNCAO CRIAR LISTA -----
@@ -293,7 +292,7 @@ loop_delete:
 delete_list:
 	sw zero, (a2)    # coloca 0 no lugar de [CAUDA]
 	li a2, 0      # coloca 0 no lugar do endereço da lista (a2)
-	j fim_delete_list
+	j fim_delete_list  # pula para fim_delete_list
 	
 # ----- FUNCAO INSERIR LISTA -----
 # Aloca um novo slot com a funçao "criar_slot", colocando o dado inserido em [NUM], o endereço de [CAUDA]
@@ -331,7 +330,7 @@ insert:
 	li t2, -2      # carrega -2 em t2 (marcador não vazio)
 	sw t2 (t0)           # carrega o t2 (marcador não vazio) nos 4 últimos bytes do slot [END]
 	addi t0, t0, -4   # decrementa t0 em 4 bytes para voltar ao endereço original
-	j fim_insert
+	j fim_insert     # pula para fim_insert
 
 # ----- FUNCAO REMOVER LISTA -----
 # Remove um bloco da lista e retorna o dado removido e o endereço do bloco de slot anterior.
