@@ -7,6 +7,8 @@ strOutDiv: 	.asciz "A Divisão entre "
 strOutSub: 	.asciz "A subtração entre "
 strAnd:			.asciz " e "
 strEquals:	.asciz " é igual a: "
+strUndo:		.asciz "O resultado da última operação foi: "
+strFinish:	.asciz "Fim do programa\n"
 	.text
 # ====== DEFINIÇOES DO PROGRAMA =======
 	.align 2
@@ -86,87 +88,154 @@ strEquals:	.asciz " é igual a: "
 		desempilhar %lista
 	.end_macro
 
+	.macro operacao (%num_1, %num2, %op, %output)
+		empilhar %num_1
+		empilhar %num_2
+		empilhar %op
+		empilhar a0
+		empilhar a1
+		empilhar a2
+		add a0, zero, %num_1
+		add a1, zero, %num_2
+		add a2, zero, %op
+		jal trata_op
+		add %output, zero, t0
+		desempilhar a2
+		desempilhar a1
+		desempilhar a0
+		desempilhar %op
+		desempilhar %num_2
+		desempilhar %num_1
+	.end_macro
+
+	.macro desfazer (%output, %lista)
+		empilhar %lista
+		empilhar a0
+		add a0, zero, %lista
+		jal undo
+		add %output, zero, t0
+		desempilhar a0
+		desempilhar %lista	
+	.end_macro
+
+	.macro ler_Input (%output, %prox_operador)
+		jal lerInput
+		add %output, zero, a0
+		add %prox_operador, zero, a1
+	.end_macro
 # ============= MAIN ===============
 main:	
-	criar_lista
-	add t1, zero, a0
-	lb t0, (t1)
-	li a7, 1
-	add a0, zero, t0
+	criar_lista s0					# Cria uma lista e armazena em s0
+
+	jal lerPrimeiroInput		# Chama função para ler primeiro input
+	
+	# Primeiro input sempre vai ter três saídas:
+	add s1, zero, a0				# Armazena a operação em s1
+	add s2, zero, a1				# Armazena o primeiro número em s2
+	add s3, zero, a2				# Armazena o segundo número em s3
+
+	tratar_operacao s1,s2,s3, s4	
+
+	inserir_lista s4, s0		# Armazena o resultado na lista
+	
+	add a0, zero, s1				# Carrega em a0 a operação
+	add a1, zero, s2				# Carrega em a1 o primeiro valor da operação
+	add a2, zero, s3				# Carrega em a2 o segundo valor da operação
+	add a3, zero, s4				# Carrega em a3 o resultado da operação
+	jal printaResultado			# Chama função printa resultado
+
+loopInputs:
+	ler_Input a0, a1				# Chama função de ler input 
+	li t0, 117							# Armazena 'u' em t0 para comparar
+	li t1, 102							# Armazena 'f' em t0 para comparar
+	
+	beq t0, a0, undo_op			# Se o o char lido for u, faz undo
+	beq t1, a0, finaliza_op # Se o char lido for f, finaliza
+	
+	add s1, zero, a0				# Armazena a operação em s1 
+	add s2, zero, a1				# Armazena o segundo valor em a1
+
+	operacao s1,s4,s2,a0		# Chama função trata Op passando operação, último resultado e valor inserido pelo user
+	add s4, zero, a0
+
+	add a0, zero, s1				# Carrega em a0 a operação
+	add a1, zero, s2				# Carrega em a1 o primeiro valor da operação
+	add a2, zero, s3				# Carrega em a2 o segundo valor da operação
+	add a3, zero, s4				# Carrega em a3 o resultado da operação
+	jal printaResultado			
+	
+	j loopInputs						# Lê próximo input
+
+undo_op:
+	li a7, 4								# Carrega função de chamar string
+	la a0, strUndo					# Carrega o argumento do Ecall
+	ecall										# Chama serviço
+
+	desfazer s4, s0					# Chama função de undo e armazena em s4
+	
+	li a7, 1								# Carrega função de printar inteiro
+	add a0, zero, s4				# Carrega resultado do pop da lista
 	ecall
-	addi t1, t1, 1
-	lb t0, (t1)
-	add a0, zero, t0
+
+	li a7, 11							
+	li a0, 10								# Printa \n
 	ecall
-	li a7, 10
-	ecall
+	j loopInputs
+
+finaliza_op:
+	li a7, 4								# Carrega função de chamar string
+	la a0, strFinish				# Carrega o argumento do Ecall
+	ecall										# Chama serviço
+
+	apagar_lista s0					# Limpa lista
+	
+	li a7, 10								# Carrega serviço para finalizar aplicação
+	ecall										# Chama serviço
 	
 
 # ========= OPERAÇÕES =========
-
+# a0 e a1, números de input, a2 operacao, t0 output
 trata_op:
-	add t0, zero, zero 				# Reinicia o valor de t0
+	empilhar ra # Guarda o endereço de retorno da pilha
 	li t0, '+' 						# Carrega o caractere '+' em t0
 	beq t0, a2, adiciona 			# Se t0 == a2 -> função adiciona
-	
-	add t0, zero, zero				# Reinicia o valor de t0
+
 	li t0, '-'						# Carrega o caractere '-' em t0
 	beq t0, a2, subtrai				# Se t0 == a2 -> função subtrai
 
-	add t0, zero, zero				# Reinicia o valor de t0
 	li t0, '*'						# Carrega o caractere '*' em t0
 	beq t0, a2, multiplica			# Se t0 == a2 -> função multiplica
 
-	add t0, zero, zero				# Reinicia o valor de t0
 	li t0, '/'						# Carrega o caractere '/' em t0
 	beq t0, a2, divide				# Se t0 == a2 -> função divide
 
 adiciona:
-	empilhar ra # Guarda o endereço de retorno da pilha
-	add s0, a0, a1 					# Cálculo principal - s0 = a0 + a1
+	add t0, a0, a1 					# Cálculo principal - s0 = a0 + a1
 	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 subtrai:
-	empilhar ra # Guarda o endereço de retorno da pilha
-	sub s0, a0, a1 					# Cálculo principal
+	sub t0, a0, a1 					# Cálculo principal
 	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 multiplica:
-	empilhar ra # Guarda o endereço de retorno da pilha
-	mul s0, a0, a1 					# Cálculo principal
+	mul t0, a0, a1 					# Cálculo principal
 	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 divide:
-	empilhar ra # Guarda o endereço de retorno da pilha
-	div s0, a0, a1 					# Cálculo principal
+	div t0, a0, a1 					# Cálculo principal
 	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 
 undo:
 	empilhar ra					# Guarda o endereço de retorno na pilha
+	remover_lista t0, a0        # Remove último endereço da lista e retorna o dado em t0
+	desempilhar ra              # Restaura o endereço de retorno da pilha
+	ret
 	
-	# Remove o último resultado da lista
-	remover_lista s0, s1		# Remove o último resultado e o armazena em s0
-
-	li a7, 4					# Carrega o serviço de printar string
-	la a0, strUndo				# Carrega o endereço da mensagem de undo
-	ecall						# Chama o serviço para imprimir a mensagem
-
-	li a7, 1					# Carrega o serviço de printar inteiro
-	add a0, zero, s0			# Carrega o resultado em a0
-	ecall						# Chama o serviço para imprimir o resultado
-
-	li a7, 11					# Carrega o serviço de printar caractere
-	li a0, '\n'					# Carrega o caractere de nova linha
-	ecall						# Chama o serviço para imprimir a nova linha
-	
-	desempilhar ra				# Restaura o endereço de retorno da pilha
-	j loop_principal			# Volta ao loop principal
-
 finalizar:
 
 apagar_lista s1
-	li a7, 10 						# Carrega o serviço de finalização de programa
+	li a7, 10 				# Carrega o serviço de finalização de programa
 	ecall							# Chamada do sistema (encerra o programa)
 	
 # ========= FUNÇOES DA LISTA ==========
@@ -196,8 +265,10 @@ apagar_lista s1
 # 	- Apagar Lista: Apaga todos os elementos de uma lista dada. Diferente da função Remover Lista, esta funcão
 #                   não só apaga os blocos da lista, mas quando chega ao estado de lista vazia, apaga a própria
 #                   estrutura da lista, removendo até a própria referencia do endereço da lista
-# 	- Inserir Lista:
-# 	- Remover Lista:
+# 	- Inserir Lista: Insere um dado na lista referida. Essa função cria um bloco novo e o insere no fim da
+#                    lista, atualizando a referência de [CAUDA] guardada pela estrutura da lista. Caso 
+#                    a inserção ocorra em uma lista vazia, apenas modifica o primeiro bloco. Não 
+´# 	- Remover Lista:
 # ----- FUNCAO CRIAR SLOT -----
 # Aloca um pedaço de memoria com 8 bytes, os primeiros 4 bytes servem para armazenar o dado
 # (número armazenado) [NUM] e os últimos 4 bytes servem para armazenar o endereço da unidade anterior
@@ -388,7 +459,7 @@ list_remove:
 #
 
  #FUNÇÃO READ FIRST INPUT -----------
- #Lê o primeiro e segundo, armazenando em a1 e a2 e a operação em a0
+ #Lê o primeiro e segundo números, armazenando em a1 e a2 respectivamente e a operação em a0
 lerPrimeiroInput:
 	li a7, 4						# Carrega o serviço de printar string
 	la a0, strFstInput  # Carrega a string como argumento
