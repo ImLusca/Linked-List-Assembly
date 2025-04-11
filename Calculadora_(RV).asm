@@ -1,14 +1,15 @@
 	.data
-strFstInput:.asciz "Insira a primeira operação: \n"
-strInput: 	.asciz "Insira a próxima operação: \n"
-strOutMul: 	.asciz "O produto de "
-strOutSum: 	.asciz "A soma de "
-strOutDiv: 	.asciz "A Divisão entre "
-strOutSub: 	.asciz "A subtração entre "
-strAnd:			.asciz " e "
+strFstInput:	.asciz "Insira a primeira operação: \n"
+strInput: 	.asciz "\nInsira a próxima operação: \n"
+strOutMul: 	.asciz "\nO produto de "
+strOutSum: 	.asciz "\nA soma de "
+strOutDiv: 	.asciz "\nA Divisão entre "
+strOutSub: 	.asciz "\nA subtração entre "
+strAnd:		.asciz " e "
 strEquals:	.asciz " é igual a: "
-strUndo:		.asciz "O resultado da última operação foi: "
-strFinish:	.asciz "Fim do programa\n"
+strUndo:	.asciz "\nO resultado da última operação foi: "
+strFinish:	.asciz "\nFim do programa\n"
+strQuebra:	.asciz "\n"
 	.text
 # ====== DEFINIÇOES DO PROGRAMA =======
 	.align 2
@@ -88,21 +89,15 @@ strFinish:	.asciz "Fim do programa\n"
 		desempilhar %lista
 	.end_macro
 
-	.macro operacao (%num_1, %num2, %op, %output)
+	.macro operacao (%num_1, %num_2, %op, %output)
 		empilhar %num_1
 		empilhar %num_2
 		empilhar %op
-		empilhar a0
-		empilhar a1
-		empilhar a2
 		add a0, zero, %num_1
 		add a1, zero, %num_2
 		add a2, zero, %op
 		jal trata_op
 		add %output, zero, t0
-		desempilhar a2
-		desempilhar a1
-		desempilhar a0
 		desempilhar %op
 		desempilhar %num_2
 		desempilhar %num_1
@@ -110,11 +105,9 @@ strFinish:	.asciz "Fim do programa\n"
 
 	.macro desfazer (%output, %lista)
 		empilhar %lista
-		empilhar a0
 		add a0, zero, %lista
 		jal undo
 		add %output, zero, t0
-		desempilhar a0
 		desempilhar %lista	
 	.end_macro
 
@@ -134,7 +127,7 @@ main:
 	add s2, zero, a1				# Armazena o primeiro número em s2
 	add s3, zero, a2				# Armazena o segundo número em s3
 
-	tratar_operacao s1,s2,s3, s4	
+	operacao s2,s3,s1, s4	
 
 	inserir_lista s4, s0		# Armazena o resultado na lista
 	
@@ -153,14 +146,17 @@ loopInputs:
 	beq t1, a0, finaliza_op # Se o char lido for f, finaliza
 	
 	add s1, zero, a0				# Armazena a operação em s1 
-	add s2, zero, a1				# Armazena o segundo valor em a1
+	add s2, zero, a1				# Armazena o segundo valor em s2
+	add s3, zero, s4				# Armazena o resultado anterior em s3
 
-	operacao s1,s4,s2,a0		# Chama função trata Op passando operação, último resultado e valor inserido pelo user
+	operacao s4,s2,s1,a0		# Chama função trata Op passando operação, último resultado e valor inserido pelo user
 	add s4, zero, a0
-
+	
+	inserir_lista s4, s0
+	
 	add a0, zero, s1				# Carrega em a0 a operação
-	add a1, zero, s2				# Carrega em a1 o primeiro valor da operação
-	add a2, zero, s3				# Carrega em a2 o segundo valor da operação
+	add a1, zero, s3				# Carrega em a1 o primeiro valor da operação
+	add a2, zero, s2				# Carrega em a2 o segundo valor da operação
 	add a3, zero, s4				# Carrega em a3 o resultado da operação
 	jal printaResultado			
 	
@@ -176,6 +172,9 @@ undo_op:
 	li a7, 1								# Carrega função de printar inteiro
 	add a0, zero, s4				# Carrega resultado do pop da lista
 	ecall
+	
+	desfazer s4, s0
+	inserir_lista s4, s0
 
 	li a7, 11							
 	li a0, 10								# Printa \n
@@ -231,8 +230,6 @@ undo:
 	remover_lista t0, a0        # Remove último endereço da lista e retorna o dado em t0
 	desempilhar ra              # Restaura o endereço de retorno da pilha
 	ret
-	
-finalizar:
 
 apagar_lista s1
 	li a7, 10 				# Carrega o serviço de finalização de programa
@@ -268,7 +265,7 @@ apagar_lista s1
 # 	- Inserir Lista: Insere um dado na lista referida. Essa função cria um bloco novo e o insere no fim da
 #                    lista, atualizando a referência de [CAUDA] guardada pela estrutura da lista. Caso 
 #                    a inserção ocorra em uma lista vazia, apenas modifica o primeiro bloco. Não 
-´# 	- Remover Lista:
+# 	- Remover Lista:
 # ----- FUNCAO CRIAR SLOT -----
 # Aloca um pedaço de memoria com 8 bytes, os primeiros 4 bytes servem para armazenar o dado
 # (número armazenado) [NUM] e os últimos 4 bytes servem para armazenar o endereço da unidade anterior
@@ -372,6 +369,7 @@ list_new:
 list_delete:
 	empilhar ra
 loop_delete:
+	lw t0, (a2)                 # carrega endereço da [CAUDA] em t0
 	remover_slot t2, t3, t0     # executa função "remover slot" para o slot de [CAUDA]
 	#                             e retorna o dado removido em t2 e o endereço anterior em t3
 	li t1, -2     # reinicia o marcador para -2
@@ -445,8 +443,6 @@ list_remove:
 	lw t0, (a2)           # guarda em t0 [CAUDA]
 	remover_slot t1, t2, t0     # executa a função "remover slot" para o slot de [CAUDA] (t0), retornando
 	#                             o dado recuperado em t1 e o endereço do anterior em t2
-	li t3, -2          # carrega -2 em t3 (marcador nao vazio)
-	beq t2, t3, fim_list_remove  # se o valor do endereço anterior for -2, não atualiza [CAUDA] e pula para o fim
 	li t3, -1            # carrega -1 em t3 (marcador vazio)
 	beq t2, t3, fim_list_remove # se o valor do endereço anterior for -1, nao atualiza [CAUDA] e pula para o fim
 	sw t2, (a2)        # atualiza [CAUDA] colocando o endereço do anterior recuperado (t2)
@@ -461,6 +457,7 @@ list_remove:
  #FUNÇÃO READ FIRST INPUT -----------
  #Lê o primeiro e segundo números, armazenando em a1 e a2 respectivamente e a operação em a0
 lerPrimeiroInput:
+	empilhar ra
 	li a7, 4						# Carrega o serviço de printar string
 	la a0, strFstInput  # Carrega a string como argumento
 	ecall								# Chama o serviço
@@ -472,23 +469,30 @@ lerPrimeiroInput:
 	li a7, 12						# Carrega o serviço de ler string
 	ecall								# Chama o Serviço
 	add t1, zero, a0		# Armazena em t1 o resultado da leitura da operação
-
+	
+	li a7, 4
+	la a0, strQuebra
+	ecall
+	
 	li a7, 5						# Carrega o serviço de ler inteiro
 	ecall								# Chama o Serviço
 	add t2, zero, a0		# Armazena em t2 o resultado da segunda leitura
 
 	add  a0, zero, t1		# Armazena em a0 a opração
 	add  a1, zero, t0		# Armazena em a1 o primeiro valor
-	add  a2, zero, t2		# Armazena em a2 o segundo valor	
+	add  a2, zero, t2		# Armazena em a2 o segundo valor
+	desempilhar ra
+	ret
 
 #FUNÇÃO DE READ INPUT --------------
 # Lê o próximo comando, se for uma operação aritimética, também lê o próximo número
 # Se for uma operação aritimética, retorna em a0 a operação e em a1 o próximo operador
 lerInput:
+	empilhar ra
 	li a7, 4						# Carrega o serviço de printar string
 	la a0, strInput  		# Carrega a string como argumento
 	ecall								# Chama o serviço
-
+	
 	j leOperacao				# Função para ler operação
 
 leProximoValor:
@@ -498,15 +502,20 @@ leProximoValor:
 	beq t1, a0, naoEhAritimetica # Se o char lido for u ou f, retorna sem ler o próximo número
 
 	add t0, zero, a0		# Armazena em t0 a operação 
-
+	
+	li a7, 4
+	la a0, strQuebra
+	ecall
+	
 	li a7, 5						# Carrega o serviço de ler inteiro
 	ecall								# Chama o Serviço
 	add t1, zero, a0		# Armazena em t1 o valor da operação
 
 	add a0, zero, t0		# Armazena em a0 a operação
 	add a1, zero, t1		# Armazena em a1 o valor da operação
-	jalr zero, 0(ra)		#	retorna
-
+	ret
+	#jalr zero, 0(ra)		#	retorna
+	
 leOperacao:
 	li a7, 12						# Carrega o serviço de ler string
 	ecall								# Chama o Serviço
@@ -531,8 +540,11 @@ printaResultado:
 
 	li t0, 47             # Carrega char '/' para comparar
 	beq a0, t0, opDiv
-
-	# Default: subtração
+	
+	li t0, 45	      # Carrega char '-' para comparar
+	beq a0, t0, opSub
+	
+opSub:
 	la a0, strOutSub			# Carrega astring strOutSub e vai para imprime_cabecalho
 	j imprime_cabecalho
 
@@ -546,6 +558,7 @@ opMult:
 
 opDiv:
 	la a0, strOutDiv			# Carrega astring strOutDiv e vai para imprime_cabecalho
+	j imprime_cabecalho
 
 imprime_cabecalho:
 	li a7, 4              # Printa string carregada
