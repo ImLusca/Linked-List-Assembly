@@ -10,6 +10,7 @@ strEquals:	.asciz " é igual a: "
 strUndo:	.asciz "\nO resultado da última operação foi: "
 strFinish:	.asciz "\nFim do programa\n"
 strQuebra:	.asciz "\n"
+strErro:    .asciz "\nErro no programa\n"
 	.text
 # ====== DEFINIÇOES DO PROGRAMA =======
 	.align 2
@@ -150,6 +151,8 @@ loopInputs:
 	add s3, zero, s4				# Armazena o resultado anterior em s3
 
 	operacao s4,s2,s1,a0		# Chama função trata Op passando operação, último resultado e valor inserido pelo user
+	li t1, 1                    # Carrega 1 para comparar com flag de erro
+	beq s7, t1, fim_loop_inputs # Se a flag de erro (s7) for 1, pula para fim do loop
 	add s4, zero, a0
 	
 	inserir_lista s4, s0
@@ -159,7 +162,8 @@ loopInputs:
 	add a2, zero, s2				# Carrega em a2 o segundo valor da operação
 	add a3, zero, s4				# Carrega em a3 o resultado da operação
 	jal printaResultado			
-	
+	fim_loop_inputs:
+	li s7, 0                    # Retorna flag de erro para 0 no reinicio do loop
 	j loopInputs						# Lê próximo input
 
 undo_op:
@@ -208,6 +212,10 @@ trata_op:
 	li t0, '/'						# Carrega o caractere '/' em t0
 	beq t0, a2, divide				# Se t0 == a2 -> função divide
 
+	bne t0, a2, erro                # Se o caractere não for igual a / 
+	#                                 (consequente diferente de todos os outros)
+	#                                 pula para erro
+
 adiciona:
 	add t0, a0, a1 					# Cálculo principal - s0 = a0 + a1
 	desempilhar ra # Restaura o endereço de retorno da pilha
@@ -221,9 +229,19 @@ multiplica:
 	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
 divide:
+	beq a1, zero, erro        # Se o divisor for 0, pula para saída de erro
 	div t0, a0, a1 					# Cálculo principal
 	desempilhar ra # Restaura o endereço de retorno da pilha
 	ret
+
+erro:
+	li a7, 4                    # Carrega 4 (Printar String) em a7
+	la a0, strErro              # Carrega endereço de strErro em a0
+	li s7, 1                    # Carrega em s7 (flag de erro) 1
+	ecall                       # Printa string no endereço marcado em a0
+	desempilhar ra # Restaura o endereço de retorno da pilha
+	ret
+
 
 undo:
 	empilhar ra					# Guarda o endereço de retorno na pilha
@@ -265,7 +283,10 @@ apagar_lista s1
 # 	- Inserir Lista: Insere um dado na lista referida. Essa função cria um bloco novo e o insere no fim da
 #                    lista, atualizando a referência de [CAUDA] guardada pela estrutura da lista. Caso 
 #                    a inserção ocorra em uma lista vazia, apenas modifica o primeiro bloco. Não 
-# 	- Remover Lista:
+# 	- Remover Lista: Remove um dado da lista referida, como um pop, destruindo os dados do bloco apontado por
+#                    [CAUDA], recuperando [NUM] e atualizando o endereço guardado em [CAUDA] para [END]
+#                    (bloco anterior ao removido). Caso o bloco removido seja o único da lista, apaga seus
+#                    dados e coloca -1 em [END], para indicar que a lista está vazia e tem um bloco vazio nela.
 # ----- FUNCAO CRIAR SLOT -----
 # Aloca um pedaço de memoria com 8 bytes, os primeiros 4 bytes servem para armazenar o dado
 # (número armazenado) [NUM] e os últimos 4 bytes servem para armazenar o endereço da unidade anterior
@@ -360,11 +381,11 @@ list_new:
 # -------------------------------
 # Macro: apagar_lista lista
 # -------------------------------
-# a2 - endereço da lista           -> Input / Output
-# t0 - endereço de cauda           -> Auxiliar
+# a2 - endereço da lista                -> Input / Output
+# t0 - endereço de cauda                -> Auxiliar
 # t1 - marcador de endereço (-1 / -2)   -> Auxiliar
-# t2 - valor do dado removido      -> Auxiliar
-# t3 - valor do endereço removido  -> Auxiliar
+# t2 - valor do dado removido           -> Auxiliar
+# t3 - valor do endereço removido       -> Auxiliar
 # -------------------------------
 list_delete:
 	empilhar ra
@@ -590,4 +611,3 @@ printValores:
 	ecall
 
 	jalr zero, 0(ra)
-
